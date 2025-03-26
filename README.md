@@ -1,10 +1,12 @@
-# TV Channel Listings Scraper
+# IPTV Channel Scraper
 
-A TypeScript-based tool for scraping TV channel listings from various providers:
+A TypeScript library for scraping TV channel listings from various providers:
 - DIRECTV
 - DISH Network
 - Sky UK
 - Virgin Media
+
+This project started as a proof-of-concept for scraping TV channel listings from various providers. The codebase has been significantly improved with the assistance of Cursor AI
 
 ## Features
 
@@ -14,6 +16,7 @@ A TypeScript-based tool for scraping TV channel listings from various providers:
 - JSON output by default
 - Optional file output for each provider
 - Individual provider scraping support
+- Available as both a library and CLI tool
 
 ## Data Sources
 
@@ -26,101 +29,93 @@ The channel listings are scraped from the following sources:
 
 Please note that these sources are third-party websites and may change without notice. The scrapers are maintained to work with the current structure of these sites, but may need updates if the source websites undergo significant changes.
 
-## Prerequisites
-
-- Node.js 18+ and npm
-- [Playwright](https://playwright.dev/) (installed automatically)
-
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd scrape-channel-listings
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Install Playwright browsers:
-   ```bash
-   npx playwright install chromium
-   ```
+```bash
+npm install iptv-channel-scraper
+```
 
 ## Usage
 
-### Scrape All Providers
+### As a Library
 
-To scrape channel listings from all providers simultaneously:
+```typescript
+import { scrapeAllProviders, scrapeProvider, type Channel, type ScrapingSummary } from 'iptv-channel-scraper';
 
-```bash
-npm run scrape
+// Scrape all providers
+const channels = await scrapeAllProviders();
+console.log(channels); // Array of Channel objects
+
+// Scrape with options
+const summary = await scrapeAllProviders({
+    writeFiles: true, // Write results to files
+    maxConcurrent: 2  // Limit concurrent scrapers
+});
+console.log(summary); // ScrapingSummary object
+
+// Scrape a specific provider
+const result = await scrapeProvider('DIRECTV');
+console.log(result); // ScraperResult object
 ```
 
-This will output a JSON object with all channel listings:
-```json
-{
-  "directv": [
-    { "number": "1", "name": "CHANNEL NAME" }
-  ],
-  "dish": [...],
-  "sky": [...],
-  "virgin": [...]
+### As a CLI Tool
+
+```bash
+# Scrape all providers
+npx iptv-channel-scraper
+
+# Scrape specific providers
+npx iptv-channel-scraper --provider DIRECTV
+npx iptv-channel-scraper --provider DISH
+npx iptv-channel-scraper --provider SKY
+npx iptv-channel-scraper --provider Virgin
+
+# Write results to files
+npx iptv-channel-scraper --write-files
+```
+
+## API Reference
+
+### Types
+
+```typescript
+interface Channel {
+    number: string;
+    name: string;
+}
+
+interface ScraperResult {
+    name: string;
+    success: boolean;
+    duration: number;
+    channelCount?: number;
+    error?: Error;
+    channels?: Channel[];
+}
+
+interface ScrapingOptions {
+    writeFiles?: boolean;
+    maxConcurrent?: number;
+}
+
+interface ScrapingSummary {
+    results: ScraperResult[];
+    totalDuration: number;
+    successRate: string;
+    totalChannels: number;
+    failedScrapers: ScraperResult[];
 }
 ```
 
-### File Output
+### Functions
 
-To save results to files instead of JSON output:
+#### `scrapeAllProviders(options?: ScrapingOptions): Promise<Channel[] | ScrapingSummary>`
 
-```bash
-npm run scrape -- --files
-```
+Scrapes channel listings from all configured providers. Returns either an array of channels or a summary object depending on the `writeFiles` option.
 
-This will:
-- Run scrapers in parallel (4 at a time by default)
-- Save results in the `data` directory
-- Display a summary of results including:
-  - Total duration
-  - Success rate
-  - Total channels scraped
-  - Any errors encountered
+#### `scrapeProvider(providerName: string, options?: ScrapingOptions): Promise<ScraperResult>`
 
-### Scrape Individual Providers
-
-To scrape a specific provider:
-
-```bash
-npm run scrape:directv  # DIRECTV channels
-npm run scrape:dish     # DISH Network channels
-npm run scrape:sky      # Sky UK channels
-npm run scrape:virgin   # Virgin Media channels
-```
-
-By default, this outputs JSON. Add `-- --files` to save to files instead:
-```bash
-npm run scrape:directv -- --files
-```
-
-### File Output Format
-
-When using `--files`, results are saved as JSON files in the `data` directory:
-- `directv.json`
-- `dish.json`
-- `sky.json`
-- `virgin.json`
-
-Each file contains an array of channel objects:
-```json
-[
-  {
-    "number": "1",
-    "name": "CHANNEL NAME"
-  }
-]
-```
+Scrapes channel listings from a specific provider. Throws an error if the provider is not found.
 
 ## Configuration
 
@@ -150,4 +145,19 @@ The scraper will:
 
 ## Development
 
-This project started as a proof-of-concept for scraping TV channel listings from various providers. The codebase has been significantly improved with the assistance of Cursor AI
+```bash
+# Install dependencies
+npm install
+
+# Build the package
+npm run build
+
+# Run tests
+npm test
+
+# Run specific scraper
+npm run scrape:directv
+npm run scrape:dish
+npm run scrape:sky
+npm run scrape:virgin
+```
