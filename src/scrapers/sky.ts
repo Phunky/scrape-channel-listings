@@ -3,7 +3,7 @@
  * Extracts channel numbers and names from Sky's channel lineup
  */
 
-import { runScraper, type ScraperConfig, type Channel } from '../utils/scraper';
+import { runScraper, runScraperCLI, type ScraperConfig, type Channel } from '../utils/scraper';
 import type { Page } from 'playwright';
 
 /**
@@ -55,5 +55,10 @@ const config: ScraperConfig = {
     },
     outputFile: 'sky.json'
 };
+
+// Run scraper if this file is executed directly
+if (require.main === module) {
+    runScraperCLI(config).catch(() => process.exit(1));
+}
 
 export default config; 

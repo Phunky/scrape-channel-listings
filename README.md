@@ -11,7 +11,8 @@ A TypeScript-based tool for scraping TV channel listings from various providers:
 - Parallel scraping with configurable concurrency
 - Performance monitoring and statistics
 - Error handling and detailed logging
-- JSON output for each provider
+- JSON output by default
+- Optional file output for each provider
 - Individual provider scraping support
 
 ## Prerequisites
@@ -47,6 +48,26 @@ To scrape channel listings from all providers simultaneously:
 npm run scrape
 ```
 
+This will output a JSON object with all channel listings:
+```json
+{
+  "directv": [
+    { "number": "1", "name": "CHANNEL NAME" }
+  ],
+  "dish": [...],
+  "sky": [...],
+  "virgin": [...]
+}
+```
+
+### File Output
+
+To save results to files instead of JSON output:
+
+```bash
+npm run scrape -- --files
+```
+
 This will:
 - Run scrapers in parallel (4 at a time by default)
 - Save results in the `data` directory
@@ -67,9 +88,14 @@ npm run scrape:sky      # Sky UK channels
 npm run scrape:virgin   # Virgin Media channels
 ```
 
-### Output
+By default, this outputs JSON. Add `-- --files` to save to files instead:
+```bash
+npm run scrape:directv -- --files
+```
 
-Results are saved as JSON files in the `data` directory:
+### File Output Format
+
+When using `--files`, results are saved as JSON files in the `data` directory:
 - `directv.json`
 - `dish.json`
 - `sky.json`
@@ -91,7 +117,7 @@ The scraper can be configured using environment variables:
 
 ```bash
 # Run with custom configuration
-HEADLESS=false CONCURRENT_SCRAPERS=3 npm run scrape
+HEADLESS=false CONCURRENT_SCRAPERS=2 npm run scrape
 ```
 
 Available environment variables:
@@ -100,7 +126,7 @@ Available environment variables:
 - `RETRY_ATTEMPTS`: Number of retry attempts for failed scrapes (default: 1)
 - `RETRY_DELAY`: Delay between retries in milliseconds (default: 1000)
 - `PAGE_TIMEOUT`: Page load timeout in milliseconds (default: 30000)
-- `OUTPUT_DIR`: Directory to save results (default: 'data')
+- `OUTPUT_DIR`: Directory to save results when using --files (default: 'data')
 
 ## Error Handling
 
@@ -109,4 +135,8 @@ The scraper will:
 - Log detailed error messages
 - Continue with remaining providers if one fails
 - Exit with code 1 if any scraper fails
-- Provide error details in the final summary
+- Provide error details in the final summary (when using --files)
+
+## Development
+
+This project started as a proof-of-concept for scraping TV channel listings from various providers. The codebase has been significantly improved with the assistance of Cursor AI

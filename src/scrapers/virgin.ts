@@ -1,16 +1,12 @@
 /**
  * Virgin Media UK Channel Listing Scraper
- * Extracts channel numbers and names from Virgin Media's channel lineup
  */
 
-import { runScraper, type ScraperConfig, type Channel } from '../utils/scraper';
+import { runScraper, runScraperCLI, type ScraperConfig, type Channel } from '../utils/scraper';
 import type { Page } from 'playwright';
 
 /**
  * Extracts channel information from the Virgin Media channel listing page
- * Skips regional variants (channels marked with "In Wales" etc.)
- * @param page - Playwright page instance
- * @returns Array of partial channel objects containing number and name
  */
 const scrapeFunction = async (page: Page): Promise<Partial<Channel>[]> => {
     return await page.$$eval('table tbody tr', (rows) => {
@@ -48,5 +44,10 @@ const config: ScraperConfig = {
     excludeChannels: (channel) => !channel.name || channel.number.includes('-'),
     outputFile: 'virgin.json'
 };
+
+// Run scraper if this file is executed directly
+if (require.main === module) {
+    runScraperCLI(config).catch(() => process.exit(1));
+}
 
 export default config; 

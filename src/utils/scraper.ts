@@ -32,13 +32,15 @@ export interface Channel {
  * @property {Record<string, string>} [overrides] - Channel name standardization mappings
  * @property {Function} [excludeChannels] - Function to filter out unwanted channels
  * @property {string} outputFile - Name of the JSON file to store results
+ * @property {Function} [runCustom] - Optional custom run function for special cases
  */
 export interface ScraperConfig {
     url: string;
     scrapeFunction: (page: playwright.Page) => Promise<Partial<Channel>[]>;
     overrides?: Record<string, string>;
     excludeChannels?: (channel: Channel) => boolean;
-    outputFile: string;
+    outputFile?: string;
+    runCustom?: (options: { writeFiles: boolean }) => Promise<Channel[]>;
 }
 
 /**
@@ -234,7 +236,11 @@ export const runScraper = async ({
         };
 
         output = await retry(scrapePage);
-        writeOutputToFile(output, outputFile);
+        
+        // Only write to file if outputFile is specified
+        if (outputFile) {
+            writeOutputToFile(output, outputFile);
+        }
     } catch (error) {
         console.error('Error during the scraping process:', error);
         throw error;
@@ -245,4 +251,44 @@ export const runScraper = async ({
     }
 
     return output;
-}; 
+};
+
+/**
+ * Parse command line arguments
+ */
+function parseArgs(): { writeFiles: boolean } {
+    return {
+        writeFiles: process.argv.includes('--files')
+    };
+}
+
+/**
+ * Execute a scraper configuration from the command line
+ * Handles argument parsing and output formatting
+ */
+export async function runScraperCLI(config: ScraperConfig): Promise<void> {
+    const { writeFiles } = parseArgs();
+    
+    try {
+        let channels: Channel[];
+        
+        if (config.runCustom) {
+            channels = await config.runCustom({ writeFiles });
+        } else {
+            // Remove outputFile from config if we're not writing to files
+            const runConfig = {
+                ...config,
+                outputFile: writeFiles ? config.outputFile : undefined
+            };
+            channels = await runScraper(runConfig);
+        }
+
+        if (!writeFiles) {
+            // Output JSON directly
+            console.log(JSON.stringify(channels, null, 2));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        process.exit(1);
+    }
+} 
