@@ -30,7 +30,6 @@ export interface Channel {
  * @property {string} url - The URL to scrape channel information from
  * @property {Function} scrapeFunction - Provider-specific function to extract channel data
  * @property {Record<string, string>} [overrides] - Channel name standardization mappings
- * @property {Function} [excludeChannels] - Function to filter out unwanted channels
  * @property {string} outputFile - Name of the JSON file to store results
  * @property {Function} [runCustom] - Optional custom run function for special cases
  */
@@ -38,7 +37,6 @@ export interface ScraperConfig {
     url: string;
     scrapeFunction: (page: playwright.Page) => Promise<Partial<Channel>[]>;
     overrides?: Record<string, string>;
-    excludeChannels?: (channel: Channel) => boolean;
     outputFile?: string;
     runCustom?: (options: { writeFiles: boolean }) => Promise<Channel[]>;
 }
@@ -179,16 +177,14 @@ const writeOutputToFile = (output: Channel[], filename: string): void => {
 
 /**
  * Processes raw scraped data into standardized channel format
- * Applies name normalization, overrides, and filtering
+ * Applies name normalization and overrides
  * @param {Partial<Channel>[]} data - Raw channel data
  * @param {Record<string, string>} [overrides] - Channel name mappings
- * @param {Function} [excludeChannels] - Channel filtering function
- * @returns {Channel[]} Processed and filtered channel list
+ * @returns {Channel[]} Processed channel list
  */
 const processData = (
     data: Partial<Channel>[], 
-    overrides: Record<string, string> = {}, 
-    excludeChannels: (channel: Channel) => boolean = () => false
+    overrides: Record<string, string> = {}
 ): Channel[] => {
     return data
         .map(item => {
@@ -202,59 +198,33 @@ const processData = (
                 name: finalName
             };
             
-            return excludeChannels(channel) ? null : channel;
+            return channel;
         })
-        .filter((item): item is Channel => item !== null);
+        .filter((channel): channel is Channel => channel !== null);
 };
 
 /**
- * Main scraper function that orchestrates the entire scraping process
- * Handles browser lifecycle, retries, and error handling
- * @param {ScraperConfig} config - Provider-specific scraper configuration
- * @returns {Promise<Channel[]>} List of scraped and processed channels
- * @throws {Error} If scraping process fails after retries
+ * Executes a scraper with the given configuration
+ * @param {ScraperConfig} config - Scraper configuration
+ * @returns {Promise<Channel[]>} Array of scraped channels
  */
-export const runScraper = async ({
-    url,
-    scrapeFunction,
-    overrides = {},
-    excludeChannels = () => false,
-    outputFile
-}: ScraperConfig): Promise<Channel[]> => {
-    let browser: playwright.Browser | undefined;
-    let output: Channel[] = [];
-
+export async function runScraper(config: ScraperConfig): Promise<Channel[]> {
+    const { browser, context } = await setupBrowser();
     try {
-        const { browser: newBrowser, context } = await setupBrowser();
-        browser = newBrowser;
-
-        const scrapePage = async () => {
-            const page = await setupPage(context, url);
-            try {
-                const data = await scrapeFunction(page);
-                return processData(data, overrides, excludeChannels);
-            } finally {
-                await page.close();
-            }
-        };
-
-        output = await retry(scrapePage);
+        const page = await setupPage(context, config.url);
+        const data = await retry(() => config.scrapeFunction(page));
+        const channels = processData(data, config.overrides);
         
-        // Only write to file if outputFile is specified
-        if (outputFile) {
-            writeOutputToFile(output, outputFile);
+        // Write to file if outputFile is specified
+        if (config.outputFile) {
+            writeOutputToFile(channels, config.outputFile);
         }
-    } catch (error) {
-        console.error('Error during the scraping process:', error);
-        throw error;
+        
+        return channels;
     } finally {
-        if (browser) {
-            await browser.close();
-        }
+        await browser.close();
     }
-
-    return output;
-};
+}
 
 /**
  * Parse command line arguments

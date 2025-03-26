@@ -40,7 +40,6 @@ const config: ScraperConfig = {
     url: 'https://www.allconnect.com/providers/dish/channel-guide',
     scrapeFunction,
     overrides,
-    excludeChannels: (channel) => !channel.name || channel.number.includes('-'),
     outputFile: 'dish.json'
 };
 

@@ -15,10 +15,20 @@ const scrapeFunction = async (page: Page): Promise<Partial<Channel>[]> => {
     return await page.$$eval('table tr', (rows) => {
         // Skip header row and process each channel row
         return rows.slice(1).map((row) => {
-            const number = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+            let number = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
             const name = row.querySelector('td:nth-child(1)')?.textContent?.trim() || '';
 
-            if (!name || !number || number.includes('-')) {
+            // Handle timeshift channels, they use the same number but the website displays the timeshift with them.
+            if (number.includes('-')) {
+                number = number.split('-')[0];
+            }
+
+            // Handle channels with commas, these have multiple numbers but we only want the first one.
+            if (number.includes(',')) {
+                number = number.split(',')[0];
+            }
+
+            if (!name || !number) {
                 return {};
             }
 
@@ -44,7 +54,6 @@ const config: ScraperConfig = {
     url: 'https://www.usdirect.com/channels',
     scrapeFunction,
     overrides,
-    excludeChannels: (channel) => !channel.name || !channel.number || channel.number.includes('-'),
     outputFile: 'directv.json'
 };
 

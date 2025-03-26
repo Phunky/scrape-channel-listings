@@ -17,6 +17,11 @@ const scrapeFunction = async (page: Page): Promise<Partial<Channel>[]> => {
             const number = row.querySelector('.column-1')?.textContent?.trim() || '';
             const name = row.querySelector('.column-2')?.textContent?.trim() || '';
 
+            // Skip those with dashes in numbers as these are category definitions
+            if (!name || !number || number.includes('-')) {
+                return {};
+            }
+
             return { number, name };
         });
     });
@@ -36,25 +41,11 @@ const overrides: Record<string, string> = {
 
 /**
  * Sky UK scraper configuration
- * Excludes:
- * - Channels without names
- * - Channels with dashes in numbers
- * - SD swap channels (800+)
- * - SD swap channels (640-645)
- * - Radio channels (starting with 01)
  */
 const config: ScraperConfig = {
     url: 'https://rxtvinfo.com/sky-channel-list-uk/',
     scrapeFunction,
     overrides,
-    excludeChannels: (channel) => {
-        const num = parseInt(channel.number);
-        return !channel.name || 
-               channel.number.includes('-') ||
-               num >= 800 || // SD SWAPS
-               (num >= 640 && num <= 645) || // SD SWAPS
-               channel.number.startsWith('01'); // radio channels
-    },
     outputFile: 'sky.json'
 };
 

@@ -1,6 +1,6 @@
 {
     "name": "@phunky/scrape-channel-listings",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "A TypeScript library for scraping TV channel listings from various providers",
     "main": "dist/index.js",
     "module": "dist/index.js",

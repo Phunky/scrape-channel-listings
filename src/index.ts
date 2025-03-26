@@ -57,7 +57,7 @@ const providers: Record<string, ScraperConfig> = {
 export async function scrapeAllProviders(options?: ScrapingOptions): Promise<ProviderChannels[] | ScrapingSummary> {
     const startTime = Date.now();
     const results: ScraperResult[] = [];
-    const maxConcurrent = options?.maxConcurrent || 2;
+    const maxConcurrent = options?.maxConcurrent || 4;
 
     // Process providers in batches to control concurrency
     const providerEntries = Object.entries(providers);

@@ -84,6 +84,9 @@ npx @phunky/scrape-channel-listings --provider Virgin
 
 # Write results to files
 npx @phunky/scrape-channel-listings --write-files
+
+# Control concurrent scrapers
+npx @phunky/scrape-channel-listings --max-concurrent 4
 ```
 
 ## API Reference
@@ -145,11 +148,11 @@ HEADLESS=false CONCURRENT_SCRAPERS=2 npm run scrape
 
 Available environment variables:
 - `HEADLESS`: Set to 'false' to see the browser while scraping (default: true)
-- `CONCURRENT_SCRAPERS`: Number of scrapers to run in parallel (default: 2)
-- `RETRY_ATTEMPTS`: Number of retry attempts for failed scrapes (default: 1)
-- `RETRY_DELAY`: Delay between retries in milliseconds (default: 1000)
-- `PAGE_TIMEOUT`: Page load timeout in milliseconds (default: 30000)
-- `OUTPUT_DIR`: Directory to save results when using --files (default: '../data')
+- `CONCURRENT_SCRAPERS`: Number of scrapers to run in parallel (default: 4) 
+- `RETRY_ATTEMPTS`: Number of retry attempts for failed scrapes (default: 3)
+- `RETRY_DELAY`: Delay between retries in milliseconds (default: 2000)
+- `PAGE_TIMEOUT`: Page load timeout in milliseconds (default: 60000)
+- `OUTPUT_DIR`: Directory to save results when using --files (default: 'data')
 
 ## Error Handling
 

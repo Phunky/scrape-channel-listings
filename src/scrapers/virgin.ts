@@ -1,5 +1,6 @@
 /**
  * Virgin Media UK Channel Listing Scraper
+ * Extracts channel numbers and names from Virgin Media's channel lineup
  */
 
 import { runScraper, runScraperCLI, type ScraperConfig, type Channel } from '../utils/scraper';
@@ -7,18 +8,22 @@ import type { Page } from 'playwright';
 
 /**
  * Extracts channel information from the Virgin Media channel listing page
+ * @param page - Playwright page instance
+ * @returns Array of partial channel objects containing number and name
  */
 const scrapeFunction = async (page: Page): Promise<Partial<Channel>[]> => {
     return await page.$$eval('table tbody tr', (rows) => {
         return rows.map((row) => {
             // Skip regional variants (e.g., "In Wales")
             const region = row.querySelector('.column-3')?.textContent?.trim() || '';
-            if(region.startsWith('In')) {
-                return {};
-            }
-
             const number = row.querySelector('.column-1')?.textContent?.trim() || '';
             const name = row.querySelector('.column-2')?.textContent?.trim() || '';
+
+            // Skip those with dashes in numbers as these are category definitions
+            // Region variants are also skipped these start with In
+            if(!name || !number || number.includes('-') || region.startsWith('In')) {
+                return {};
+            }
 
             return { number, name };
         });
@@ -43,7 +48,6 @@ const config: ScraperConfig = {
     url: 'https://rxtvinfo.com/virgin-media-channel-list-uk/',
     scrapeFunction,
     overrides,
-    excludeChannels: (channel) => !channel.name || channel.number.includes('-'),
     outputFile: 'virgin.json'
 };
 
