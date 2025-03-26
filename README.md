@@ -1,4 +1,4 @@
-# IPTV Channel Scraper
+# Scrape Channel Listings
 
 A TypeScript library for scraping TV channel listings from various providers:
 - DIRECTV
@@ -18,6 +18,18 @@ This project started as a proof-of-concept for scraping TV channel listings from
 - Individual provider scraping support
 - Available as both a library and CLI tool
 
+## Prerequisites
+
+This package requires Playwright with Chromium browser for web scraping. After installing the package, you'll need to install Playwright's Chromium browser:
+
+```bash
+# Install the package
+npm install @phunky/scrape-channel-listings
+
+# Install Playwright's Chromium browser
+npx playwright install chromium
+```
+
 ## Data Sources
 
 The channel listings are scraped from the following sources:
@@ -32,7 +44,7 @@ Please note that these sources are third-party websites and may change without n
 ## Installation
 
 ```bash
-npm install iptv-channel-scraper
+npm install @phunky/scrape-channel-listings
 ```
 
 ## Usage
@@ -40,11 +52,11 @@ npm install iptv-channel-scraper
 ### As a Library
 
 ```typescript
-import { scrapeAllProviders, scrapeProvider, type Channel, type ScrapingSummary } from 'iptv-channel-scraper';
+import { scrapeAllProviders, scrapeProvider, type Channel, type ScrapingSummary } from '@phunky/scrape-channel-listings';
 
 // Scrape all providers
 const channels = await scrapeAllProviders();
-console.log(channels); // Array of Channel objects
+console.log(channels); // Array of { provider: string, channels: Channel[] }
 
 // Scrape with options
 const summary = await scrapeAllProviders({
@@ -62,16 +74,16 @@ console.log(result); // ScraperResult object
 
 ```bash
 # Scrape all providers
-npx iptv-channel-scraper
+npx @phunky/scrape-channel-listings
 
 # Scrape specific providers
-npx iptv-channel-scraper --provider DIRECTV
-npx iptv-channel-scraper --provider DISH
-npx iptv-channel-scraper --provider SKY
-npx iptv-channel-scraper --provider Virgin
+npx @phunky/scrape-channel-listings --provider DIRECTV
+npx @phunky/scrape-channel-listings --provider DISH
+npx @phunky/scrape-channel-listings --provider SKY
+npx @phunky/scrape-channel-listings --provider Virgin
 
 # Write results to files
-npx iptv-channel-scraper --write-files
+npx @phunky/scrape-channel-listings --write-files
 ```
 
 ## API Reference
@@ -82,6 +94,11 @@ npx iptv-channel-scraper --write-files
 interface Channel {
     number: string;
     name: string;
+}
+
+interface ProviderChannels {
+    provider: string;
+    channels: Channel[];
 }
 
 interface ScraperResult {
@@ -109,9 +126,9 @@ interface ScrapingSummary {
 
 ### Functions
 
-#### `scrapeAllProviders(options?: ScrapingOptions): Promise<Channel[] | ScrapingSummary>`
+#### `scrapeAllProviders(options?: ScrapingOptions): Promise<ProviderChannels[] | ScrapingSummary>`
 
-Scrapes channel listings from all configured providers. Returns either an array of channels or a summary object depending on the `writeFiles` option.
+Scrapes channel listings from all configured providers. Returns either an array of provider channels or a summary object depending on the `writeFiles` option.
 
 #### `scrapeProvider(providerName: string, options?: ScrapingOptions): Promise<ScraperResult>`
 
@@ -161,3 +178,7 @@ npm run scrape:dish
 npm run scrape:sky
 npm run scrape:virgin
 ```
+
+## License
+
+ISC

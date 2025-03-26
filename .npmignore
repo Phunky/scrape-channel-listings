@@ -1,0 +1,34 @@
+# Source files (we'll publish the compiled dist)
+src/
+
+# Development files
+.git/
+.gitignore
+.npmignore
+.editorconfig
+.eslintrc
+.prettierrc
+jest.config.js
+tsconfig.json
+
+# Test files
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Development data
+data/
+
+# Development scripts
+scripts/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Misc
+.DS_Store
+.env
+.env.*
+*.log 

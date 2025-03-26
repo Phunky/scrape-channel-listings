@@ -1,22 +1,23 @@
+#!/usr/bin/env node
+
 /**
- * Main entry point for the channel listing scraper
- * Exposes both library API and CLI functionality
+ * Main entry point for the channel listing scraper.
+ * This file exposes both the library API and CLI functionality.
  */
 
-import { runScraper, runScraperCLI, type ScraperConfig } from './utils/scraper';
+import { runScraper, type Channel, type ScraperConfig } from './utils/scraper';
 import directvConfig from './scrapers/directv';
 import dishConfig from './scrapers/dish';
 import skyConfig from './scrapers/sky';
 import virginConfig from './scrapers/virgin';
+import { writeResultsToFiles } from './utils/fileUtils';
+import { parseArgs } from './utils/args';
 
-export interface Channel {
-    number: string;
-    name: string;
-}
+export type { Channel };
 
-export interface ScraperDefinition {
-    name: string;
-    config: typeof directvConfig;
+export interface ScrapingOptions {
+    writeFiles?: boolean;
+    maxConcurrent?: number;
 }
 
 export interface ScraperResult {
@@ -28,11 +29,6 @@ export interface ScraperResult {
     channels?: Channel[];
 }
 
-export interface ScrapingOptions {
-    writeFiles?: boolean;
-    maxConcurrent?: number;
-}
-
 export interface ScrapingSummary {
     results: ScraperResult[];
     totalDuration: number;
@@ -41,145 +37,154 @@ export interface ScrapingSummary {
     failedScrapers: ScraperResult[];
 }
 
-/**
- * List of all available scrapers with their configurations
- */
-const SCRAPERS: ScraperDefinition[] = [
-    { name: 'DIRECTV', config: directvConfig },
-    { name: 'DISH', config: dishConfig },
-    { name: 'SKY', config: skyConfig },
-    { name: 'Virgin', config: virginConfig }
-];
+export interface ProviderChannels {
+    provider: string;
+    channels: Channel[];
+}
+
+const providers: Record<string, ScraperConfig> = {
+    DIRECTV: directvConfig,
+    DISH: dishConfig,
+    SKY: skyConfig,
+    Virgin: virginConfig
+};
 
 /**
- * Executes a single scraper and collects metrics
+ * Scrapes channel listings from all configured providers.
+ * @param options Optional configuration for the scraping process
+ * @returns Promise resolving to either an array of provider channels or a summary object
  */
-async function executeScraper(scraper: ScraperDefinition, writeFiles: boolean): Promise<ScraperResult> {
+export async function scrapeAllProviders(options?: ScrapingOptions): Promise<ProviderChannels[] | ScrapingSummary> {
     const startTime = Date.now();
-    try {        
-        const config = {
-            ...scraper.config,
-            outputFile: writeFiles ? scraper.config.outputFile : undefined
-        };
-        
-        const channels = await runScraper(config);
-        const duration = Date.now() - startTime;
-        
-        if (writeFiles) {
-            console.log(`${scraper.name} scraper found ${channels.length} channels and completed in ${duration}ms`);
-        }
-        
+    const results: ScraperResult[] = [];
+    const maxConcurrent = options?.maxConcurrent || 2;
+
+    // Process providers in batches to control concurrency
+    const providerEntries = Object.entries(providers);
+    for (let i = 0; i < providerEntries.length; i += maxConcurrent) {
+        const batch = providerEntries.slice(i, i + maxConcurrent);
+        const batchResults = await Promise.all(
+            batch.map(async ([name, config]) => {
+                const start = Date.now();
+                try {
+                    const channels = await runScraper(config);
+                    return {
+                        name,
+                        success: true,
+                        duration: Date.now() - start,
+                        channelCount: channels.length,
+                        channels
+                    };
+                } catch (error) {
+                    return {
+                        name,
+                        success: false,
+                        duration: Date.now() - start,
+                        error: error as Error
+                    };
+                }
+            })
+        );
+        results.push(...batchResults);
+    }
+
+    const totalDuration = Date.now() - startTime;
+    const failedScrapers = results.filter(r => !r.success);
+    const successRate = `${((results.length - failedScrapers.length) / results.length * 100).toFixed(1)}%`;
+    const totalChannels = results.reduce((sum, r) => sum + (r.channelCount || 0), 0);
+
+    if (options?.writeFiles) {
         return {
-            name: scraper.name,
+            results,
+            totalDuration,
+            successRate,
+            totalChannels,
+            failedScrapers
+        };
+    }
+
+    // Transform results into ProviderChannels array
+    return results
+        .filter(result => result.success && result.channels)
+        .map(result => ({
+            provider: result.name,
+            channels: result.channels!
+        }));
+}
+
+/**
+ * Scrapes channel listings from a specific provider.
+ * @param providerName Name of the provider to scrape
+ * @param options Optional configuration for the scraping process
+ * @returns Promise resolving to a ScraperResult object
+ * @throws Error if provider is not found
+ */
+export async function scrapeProvider(providerName: string, options?: ScrapingOptions): Promise<ScraperResult> {
+    const config = providers[providerName];
+    if (!config) {
+        throw new Error(`Provider "${providerName}" not found`);
+    }
+
+    const start = Date.now();
+    try {
+        const channels = await runScraper(config);
+        return {
+            name: providerName,
             success: true,
-            duration,
+            duration: Date.now() - start,
             channelCount: channels.length,
-            channels: channels
+            channels
         };
     } catch (error) {
-        const duration = Date.now() - startTime;
-        if (writeFiles) {
-            console.error(`${scraper.name} scraper failed after ${duration}ms:`, error);
-        }
         return {
-            name: scraper.name,
+            name: providerName,
             success: false,
-            duration,
+            duration: Date.now() - start,
             error: error as Error
         };
     }
 }
 
-/**
- * Scrapes channel listings from all configured providers
- * @param options Configuration options for the scraping process
- * @returns Promise resolving to either a summary object or array of channels
- */
-export async function scrapeAllProviders(options: ScrapingOptions = {}): Promise<ScrapingSummary | Channel[]> {
-    const { writeFiles = false, maxConcurrent = 4 } = options;
-    const results: ScraperResult[] = [];
-    const queue = [...SCRAPERS];
-    const inProgress: Array<Promise<ScraperResult>> = [];
-
-    if (writeFiles) {
-        console.log(`Starting scrapers (max ${maxConcurrent} in parallel)...\n`);
-    }
-
-    // Process scrapers with concurrency limit
-    while (queue.length > 0 || inProgress.length > 0) {
-        while (inProgress.length < maxConcurrent && queue.length > 0) {
-            const scraper = queue.shift()!;
-            inProgress.push(executeScraper(scraper, writeFiles));
-        }
-
-        const completedResults = await Promise.all(inProgress);
-        results.push(...completedResults);
-        inProgress.length = 0;
-    }
-
-    const successful = results.filter(r => r.success);
-    const failed = results.filter(r => !r.success);
-    const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
-    const totalChannels = successful.reduce((sum, r) => sum + (r.channelCount || 0), 0);
-
-    if (!writeFiles) {
-        // Return channels for JSON output
-        return results.reduce((acc, result) => {
-            if (result.success && result.channels) {
-                acc.push(...result.channels);
-            }
-            return acc;
-        }, [] as Channel[]);
-    } else {
-        // Print summary when writing files
-        console.log('\nScraping Summary:');
-        console.log('----------------');
-        console.log(`Total Duration: ${totalDuration}ms`);
-        console.log(`Success Rate: ${successful.length}/${results.length}`);
-        console.log(`Total Channels: ${totalChannels}`);
-        
-        if (failed.length > 0) {
-            console.log('\nFailed Scrapers:');
-            failed.forEach(result => {
-                console.log(`- ${result.name}: ${result.error?.message}`);
-            });
-        }
-
-        return {
-            results,
-            totalDuration,
-            successRate: `${successful.length}/${results.length}`,
-            totalChannels,
-            failedScrapers: failed
-        };
-    }
-}
-
-/**
- * Scrapes channel listings from a specific provider
- * @param providerName Name of the provider to scrape
- * @param options Configuration options for the scraping process
- * @returns Promise resolving to the scraper result
- */
-export async function scrapeProvider(providerName: string, options: ScrapingOptions = {}): Promise<ScraperResult> {
-    const scraper = SCRAPERS.find(s => s.name.toLowerCase() === providerName.toLowerCase());
-    if (!scraper) {
-        throw new Error(`Provider "${providerName}" not found. Available providers: ${SCRAPERS.map(s => s.name).join(', ')}`);
-    }
-    return executeScraper(scraper, options.writeFiles || false);
-}
-
-// Execute all scrapers if this file is run directly
+// CLI functionality
 if (require.main === module) {
-    runScraperCLI({
-        url: '', // Not used for parallel scraping
-        scrapeFunction: async () => [], // Not used for parallel scraping
-        async runCustom({ writeFiles }) {
-            const result = await scrapeAllProviders({ writeFiles });
-            if (writeFiles && 'failedScrapers' in result && result.failedScrapers.length > 0) {
+    const args = parseArgs();
+    const options: ScrapingOptions = {
+        writeFiles: args.writeFiles,
+        maxConcurrent: args.maxConcurrent
+    };
+
+    if (args.provider) {
+        // Scrape specific provider
+        scrapeProvider(args.provider, options)
+            .then(result => {
+                if (result.success && result.channels) {
+                    if (args.writeFiles) {
+                        writeResultsToFiles([result]);
+                    } else {
+                        console.log(JSON.stringify(result.channels, null, 2));
+                    }
+                } else {
+                    console.error(`Failed to scrape ${args.provider}:`, result.error);
+                    process.exit(1);
+                }
+            })
+            .catch(error => {
+                console.error(`Error scraping ${args.provider}:`, error);
                 process.exit(1);
-            }
-            return [];
-        }
-    }).catch(() => process.exit(1));
+            });
+    } else {
+        // Scrape all providers
+        scrapeAllProviders(options)
+            .then(results => {
+                if (args.writeFiles) {
+                    writeResultsToFiles((results as ScrapingSummary).results);
+                } else {
+                    console.log(JSON.stringify(results, null, 2));
+                }
+            })
+            .catch(error => {
+                console.error('Error scraping providers:', error);
+                process.exit(1);
+            });
+    }
 } 
