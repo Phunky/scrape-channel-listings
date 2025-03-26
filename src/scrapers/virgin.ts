@@ -32,6 +32,8 @@ const overrides: Record<string, string> = {
     'TNT SPORTS ULTIMATE': 'TNT Ultimate',
     'ITV1/STV/UTV': 'ITV1',
     'SKY CINEMA SCI-FI & HORROR HD': 'SKY CINEMA SCFI/HORROR',
+    '5 HD': 'Channel5 HD',
+    '5+1': 'Channel5+1',
 };
 
 /**

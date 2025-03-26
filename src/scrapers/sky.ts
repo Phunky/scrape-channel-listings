@@ -30,6 +30,8 @@ const overrides: Record<string, string> = {
     'DISC. TURBO': 'Discovery Turbo',
     'SKY CINEMA SCI-FI/HORROR': 'SKY CINEMA SCFI/HORROR',
     'RTÉjr': 'RTE Junior',
+    '5': 'Channel5',
+    '5+1': 'Channel5+1',
 };
 
 /**

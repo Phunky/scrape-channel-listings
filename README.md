@@ -15,6 +15,17 @@ A TypeScript-based tool for scraping TV channel listings from various providers:
 - Optional file output for each provider
 - Individual provider scraping support
 
+## Data Sources
+
+The channel listings are scraped from the following sources:
+
+- DIRECTV: [usdirect.com/channels](https://www.usdirect.com/channels)
+- DISH Network: [allconnect.com/providers/dish/channel-guide](https://www.allconnect.com/providers/dish/channel-guide)
+- Sky UK: [rxtvinfo.com/sky-channel-list-uk](https://rxtvinfo.com/sky-channel-list-uk/)
+- Virgin Media UK: [rxtvinfo.com/virgin-media-channel-list-uk](https://rxtvinfo.com/virgin-media-channel-list-uk/)
+
+Please note that these sources are third-party websites and may change without notice. The scrapers are maintained to work with the current structure of these sites, but may need updates if the source websites undergo significant changes.
+
 ## Prerequisites
 
 - Node.js 18+ and npm
@@ -126,7 +137,7 @@ Available environment variables:
 - `RETRY_ATTEMPTS`: Number of retry attempts for failed scrapes (default: 1)
 - `RETRY_DELAY`: Delay between retries in milliseconds (default: 1000)
 - `PAGE_TIMEOUT`: Page load timeout in milliseconds (default: 30000)
-- `OUTPUT_DIR`: Directory to save results when using --files (default: 'data')
+- `OUTPUT_DIR`: Directory to save results when using --files (default: '../data')
 
 ## Error Handling
 

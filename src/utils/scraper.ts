@@ -66,7 +66,7 @@ const CONFIG = {
         WAIT_UNTIL: 'networkidle' as const,
     },
     // Output directory
-    OUTPUT_DIR: 'data',
+    OUTPUT_DIR: '../data',
 };
 
 /**
@@ -94,13 +94,16 @@ const setupBrowser = async () => {
 const normalizeChannelName = (name: string): string => {
     return name
         .toUpperCase()
-        .replace(/(?:\([^)]*\)|'|'|[^\w\s&+']|(?:\s+)|(?:\s*&\s*))/g, (match) => {
-            if (match === '&') return ' & ';
+        .replace(/(?:\([^)]*\)|'|'|[^\w\s&+']|(?:\s+)|(?:\s*&\s*)|\s+\+1)/g, (match) => {
+            if (match === '&' || match.includes('&')) return '&';
             if (match === "'" || match === "'") return "'";
             if (match.startsWith('(')) return '';
+            if (match.includes('+1')) return '+1';
             if (match === ' ') return ' ';
             return '';
         })
+        .replace(/\s+\+1/g, '+1')
+        .replace(/\s+/g, ' ')
         .trim();
 };
 
